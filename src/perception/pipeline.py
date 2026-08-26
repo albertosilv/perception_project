@@ -14,7 +14,7 @@ from types import SimpleNamespace
 from src.perception.face_detector import FaceDetector
 from src.perception.landmark_detector import LandmarkDetector
 from src.perception.types import FrameResult
-from src.perception.blink_detector import BlinkDetector
+from src.perception.eye_state_detector import BlinkDetector
 from src.perception.head_pose_detector import HeadPoseDetector
 from src.core.logger import get_logger
 from src.perception.yawn_detector import YawnDetector

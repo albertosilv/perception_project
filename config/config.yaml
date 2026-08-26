@@ -1,5 +1,5 @@
 # =========================================================
-# Configuração central do projeto de percepção computacional
+# CONFIGURAÇÃO CENTRAL
 # =========================================================
 
 camera:
@@ -9,12 +9,20 @@ camera:
   flip_horizontal: true
 
 
+# =========================================================
+# DETECÇÃO FACIAL
+# =========================================================
+
 face_detection:
   backend: "dlib_hog"
   haar_cascade_path: "models/haarcascade_frontalface_default.xml"
   upsample: 1
   min_confidence: 0.0
 
+
+# =========================================================
+# LANDMARKS FACIAIS
+# =========================================================
 
 landmarks:
   enabled: true
@@ -24,21 +32,38 @@ landmarks:
 
 
 # =========================================================
-# PISCADAS
+# ESTADO DOS OLHOS
 # =========================================================
 
-blink:
+eye_state:
   enabled: true
 
-  # Eye Aspect Ratio.
-  #
-  # EAR abaixo deste valor é utilizado pelo detector de
-  # piscadas para identificar o fechamento ocular associado
-  # a uma piscada.
-  ear_threshold: 0.20
+  # -------------------------------------------------------
+  # NORMALIZAÇÃO DO EAR
+  # -------------------------------------------------------
 
-  # Duração mínima para confirmação de uma piscada.
-  min_blink_duration_s: 0.2
+  open_ear: 0.25
+  closed_ear: 0.10
+
+  # closed_ratio >= threshold → olho fechado
+  closed_ratio_threshold: 0.60
+
+
+  # -------------------------------------------------------
+  # PISCADA
+  # -------------------------------------------------------
+
+  # Duração mínima para confirmar uma piscada.
+  min_blink_duration_s: 0.20
+
+
+  # -------------------------------------------------------
+  # FECHAMENTO OCULAR PROLONGADO
+  # -------------------------------------------------------
+
+  # A partir desta duração o fechamento não é mais
+  # classificado como uma piscada.
+  prolonged_closure_duration_s: 3.0
 
 
 # =========================================================
@@ -48,46 +73,15 @@ blink:
 yawn:
   enabled: true
 
-  # Mouth Aspect Ratio.
-  #
-  # MAR >= 0.60 é utilizado como condição de abertura da boca
-  # associada ao bocejo.
+  # Mouth Aspect Ratio
   mar_threshold: 0.60
 
-  # Duração mínima para confirmação do bocejo.
-  #
-  # Evita classificar aberturas rápidas da boca, como fala,
-  # como bocejo.
+  # Tempo mínimo com MAR acima do threshold.
   min_duration_s: 3.0
 
 
 # =========================================================
-# OLHOS FECHADOS
-# =========================================================
-
-closed_eyes:
-  enabled: true
-
-  # Razão de fechamento derivada do EAR:
-  #
-  # closed_ratio = (0.25 - EAR) / 0.15
-  #
-  # Com threshold = 0.60:
-  #
-  #     EAR ~= 0.16
-  #
-  # Este limiar define quando o olho será considerado
-  # "fechado" para os indicadores de fechamento ocular.
-  closed_eye_threshold: 0.60
-
-  # Fechamento ocular contínuo acima desta duração pode
-  # ser utilizado como indicador de fechamento prolongado/
-  # possível microssono.
-  min_duration_s: 3.0
-
-
-# =========================================================
-# POSTURA DA CABEÇA (COM CALIBRAÇÃO DINÂMICA BASEADA EM TEMPO)
+# POSTURA DA CABEÇA
 # =========================================================
 
 head_pose:
@@ -95,49 +89,37 @@ head_pose:
 
   draw_axis: true
 
-  # --- Limiares para alertas (em graus) ---
-  # NOTA: Estes valores são APÓS a calibração (ajustados pela baseline).
-  # Ou seja, representam desvios da posição neutra da cabeça.
-  
-  # Roll: Inclinação lateral da cabeça (sonolência/perda de tônus)
+  # -------------------------------------------------------
+  # ROLL
+  # -------------------------------------------------------
+
   roll_alert_threshold: 20.0
   roll_min_duration_s: 0.8
 
-  # Pitch: Inclinação frontal (cabeceio/sonolência)
+  # -------------------------------------------------------
+  # PITCH
+  # -------------------------------------------------------
+
   pitch_nodding_threshold: 12.0
   pitch_min_duration_s: 0.8
 
-  # Yaw: Rotação lateral (distração)
+  # -------------------------------------------------------
+  # YAW
+  # -------------------------------------------------------
+
   yaw_distraction_threshold: 20.0
   yaw_min_duration_s: 0.8
 
-  # --- Configurações de Calibração ---
-  # A calibração é essencial para compensar a posição da câmera
-  # (ex: notebook em mesa baixa, câmera lateral, etc.)
-  #
-  # TODOS os parâmetros abaixo são baseados em TEMPO (segundos),
-  # não em frames, para ser independente de FPS/hardware.
-  
-  # Tempo mínimo (segundos) para coletar amostras de calibração.
-  # Durante este período, o sistema assume que a cabeça está
-  # na posição neutra.
-  # 
-  # 1.5 segundos é suficiente para coletar ~45 amostras a 30fps
-  # mas o sistema funciona independente do FPS real.
+  # -------------------------------------------------------
+  # CALIBRAÇÃO
+  # -------------------------------------------------------
+
   calibration_duration_s: 1.5
-  
-  # Ativa recalibração automática quando a cabeça fica estável.
-  # Útil se o usuário mudar de posição durante o uso.
+
   auto_recalibrate: true
-  
-  # Tempo (em segundos) que a cabeça deve ficar estável para
-  # recalibrar automaticamente.
-  # Um valor mais alto evita recalibrações frequentes.
+
   stable_threshold_s: 5.0
-  
-  # Variação máxima permitida durante a calibração (em graus).
-  # Se a cabeça se mover mais que isso durante a calibração,
-  # o sistema pode recalibrar ou descartar amostras.
+
   calibration_max_variation: 5.0
 
 
@@ -148,39 +130,16 @@ head_pose:
 perclos:
   enabled: true
 
-  # Janela temporal utilizada para o cálculo do PERCLOS.
-  #
-  # PERCLOS = tempo com olhos fechados / tempo observado.
-  #
-  # O cálculo é baseado em tempo e não em quantidade de frames,
-  # tornando a métrica menos dependente do FPS da câmera.
+  # Janela de observação.
   window_s: 60.0
 
-  # Limiar utilizado para classificar o olho como fechado
-  # durante o cálculo do PERCLOS.
-  #
-  # closed_ratio = (0.25 - EAR) / 0.15
-  #
-  # closed_ratio = 0.60
-  #        ↓
-  # EAR ~= 0.16
-  #
-  # Este parâmetro deve permanecer consistente com
-  # closed_eyes.closed_eye_threshold.
-  closed_ratio_threshold: 0.60
-
-  # Percentual de tempo com os olhos fechados necessário
-  # para gerar alerta de PERCLOS.
-  #
-  # 0.08 = 8%
+  # 8% do tempo observado com os olhos fechados.
   perclos_alert_threshold: 0.08
 
-  # Frequência de piscadas por minuto.
-  # Indicador complementar ao PERCLOS.
+  # Piscadas por minuto.
   blink_rate_alert_threshold: 30.0
 
-  # Frequência de bocejos por minuto.
-  # Indicador comportamental complementar ao PERCLOS.
+  # Bocejos por minuto.
   yawn_rate_alert_threshold: 3.0
 
 
