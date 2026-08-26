@@ -1,34 +1,206 @@
 # =========================================================
-# Configuração central do projeto de percepção
-# Edite aqui em vez de mexer no código-fonte
+# Configuração central do projeto de percepção computacional
 # =========================================================
 
 camera:
-  source: 0                # 0 = webcam padrão, ou caminho de vídeo/RTSP
+  source: 0
   width: 640
   height: 480
-  flip_horizontal: true    # espelha a imagem (útil pra webcam)
+  flip_horizontal: true
+
 
 face_detection:
-  # backend: "haar" (rápido, mais leve) ou "dlib_hog" (mais preciso, mais lento)
   backend: "dlib_hog"
   haar_cascade_path: "models/haarcascade_frontalface_default.xml"
-  upsample: 1               # usado apenas pelo dlib_hog (aumenta detecção de rostos pequenos)
-  min_confidence: 0.0       # reservado para backends futuros (ex: DNN)
+  upsample: 1
+  min_confidence: 0.0
+
 
 landmarks:
   enabled: true
   predictor_path: "models/shape_predictor_68_face_landmarks.dat"
   draw_points: true
-  draw_indices: false      # desenha o número de cada ponto (útil pra debug)
+  draw_indices: false
+
+
+# =========================================================
+# PISCADAS
+# =========================================================
+
+blink:
+  enabled: true
+
+  # Eye Aspect Ratio.
+  #
+  # EAR abaixo deste valor é utilizado pelo detector de
+  # piscadas para identificar o fechamento ocular associado
+  # a uma piscada.
+  ear_threshold: 0.20
+
+  # Duração mínima para confirmação de uma piscada.
+  min_blink_duration_s: 0.2
+
+
+# =========================================================
+# BOCEJO
+# =========================================================
+
+yawn:
+  enabled: true
+
+  # Mouth Aspect Ratio.
+  #
+  # MAR >= 0.60 é utilizado como condição de abertura da boca
+  # associada ao bocejo.
+  mar_threshold: 0.60
+
+  # Duração mínima para confirmação do bocejo.
+  #
+  # Evita classificar aberturas rápidas da boca, como fala,
+  # como bocejo.
+  min_duration_s: 3.0
+
+
+# =========================================================
+# OLHOS FECHADOS
+# =========================================================
+
+closed_eyes:
+  enabled: true
+
+  # Razão de fechamento derivada do EAR:
+  #
+  # closed_ratio = (0.25 - EAR) / 0.15
+  #
+  # Com threshold = 0.60:
+  #
+  #     EAR ~= 0.16
+  #
+  # Este limiar define quando o olho será considerado
+  # "fechado" para os indicadores de fechamento ocular.
+  closed_eye_threshold: 0.60
+
+  # Fechamento ocular contínuo acima desta duração pode
+  # ser utilizado como indicador de fechamento prolongado/
+  # possível microssono.
+  min_duration_s: 3.0
+
+
+# =========================================================
+# POSTURA DA CABEÇA (COM CALIBRAÇÃO DINÂMICA BASEADA EM TEMPO)
+# =========================================================
+
+head_pose:
+  enabled: true
+
+  draw_axis: true
+
+  # --- Limiares para alertas (em graus) ---
+  # NOTA: Estes valores são APÓS a calibração (ajustados pela baseline).
+  # Ou seja, representam desvios da posição neutra da cabeça.
+  
+  # Roll: Inclinação lateral da cabeça (sonolência/perda de tônus)
+  roll_alert_threshold: 20.0
+  roll_min_duration_s: 0.8
+
+  # Pitch: Inclinação frontal (cabeceio/sonolência)
+  pitch_nodding_threshold: 12.0
+  pitch_min_duration_s: 0.8
+
+  # Yaw: Rotação lateral (distração)
+  yaw_distraction_threshold: 20.0
+  yaw_min_duration_s: 0.8
+
+  # --- Configurações de Calibração ---
+  # A calibração é essencial para compensar a posição da câmera
+  # (ex: notebook em mesa baixa, câmera lateral, etc.)
+  #
+  # TODOS os parâmetros abaixo são baseados em TEMPO (segundos),
+  # não em frames, para ser independente de FPS/hardware.
+  
+  # Tempo mínimo (segundos) para coletar amostras de calibração.
+  # Durante este período, o sistema assume que a cabeça está
+  # na posição neutra.
+  # 
+  # 1.5 segundos é suficiente para coletar ~45 amostras a 30fps
+  # mas o sistema funciona independente do FPS real.
+  calibration_duration_s: 1.5
+  
+  # Ativa recalibração automática quando a cabeça fica estável.
+  # Útil se o usuário mudar de posição durante o uso.
+  auto_recalibrate: true
+  
+  # Tempo (em segundos) que a cabeça deve ficar estável para
+  # recalibrar automaticamente.
+  # Um valor mais alto evita recalibrações frequentes.
+  stable_threshold_s: 5.0
+  
+  # Variação máxima permitida durante a calibração (em graus).
+  # Se a cabeça se mover mais que isso durante a calibração,
+  # o sistema pode recalibrar ou descartar amostras.
+  calibration_max_variation: 5.0
+
+
+# =========================================================
+# PERCLOS
+# =========================================================
+
+perclos:
+  enabled: true
+
+  # Janela temporal utilizada para o cálculo do PERCLOS.
+  #
+  # PERCLOS = tempo com olhos fechados / tempo observado.
+  #
+  # O cálculo é baseado em tempo e não em quantidade de frames,
+  # tornando a métrica menos dependente do FPS da câmera.
+  window_s: 60.0
+
+  # Limiar utilizado para classificar o olho como fechado
+  # durante o cálculo do PERCLOS.
+  #
+  # closed_ratio = (0.25 - EAR) / 0.15
+  #
+  # closed_ratio = 0.60
+  #        ↓
+  # EAR ~= 0.16
+  #
+  # Este parâmetro deve permanecer consistente com
+  # closed_eyes.closed_eye_threshold.
+  closed_ratio_threshold: 0.60
+
+  # Percentual de tempo com os olhos fechados necessário
+  # para gerar alerta de PERCLOS.
+  #
+  # 0.08 = 8%
+  perclos_alert_threshold: 0.08
+
+  # Frequência de piscadas por minuto.
+  # Indicador complementar ao PERCLOS.
+  blink_rate_alert_threshold: 30.0
+
+  # Frequência de bocejos por minuto.
+  # Indicador comportamental complementar ao PERCLOS.
+  yawn_rate_alert_threshold: 3.0
+
+
+# =========================================================
+# DISPLAY
+# =========================================================
 
 display:
   window_name: "Perception Pipeline"
+
   show_fps: true
   show_bbox: true
   font_scale: 0.6
 
+
+# =========================================================
+# LOGGING
+# =========================================================
+
 logging:
-  level: "INFO"             # DEBUG, INFO, WARNING, ERROR
-  log_to_file: false
+  level: "INFO"
+  log_to_file: true
   log_file: "data/output/perception.log"
