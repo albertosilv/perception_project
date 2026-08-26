@@ -1,0 +1,22 @@
+# -------------------------------------------------------------------
+# INSTALAÇÃO NO WINDOWS:
+# dlib quase nunca tem wheel pré-compilada no PyPI para Windows,
+# então ele tenta compilar do zero (precisa de CMake + Visual C++
+# Build Tools). O caminho mais simples é instalar as libs pesadas
+# via conda-forge, que já tem binários prontos:
+#
+#   conda create -n perception python=3.11 -y
+#   conda activate perception
+#   conda install -c conda-forge dlib numpy opencv -y
+#   pip install -r requirements.txt   (instala só o restante abaixo)
+#
+# No Linux/Mac normalmente `pip install -r requirements.txt` direto
+# já funciona sem problema.
+# -------------------------------------------------------------------
+
+opencv-python==4.10.0.84
+dlib==19.24.6
+numpy>=1.26,<3
+imutils==0.5.4
+scipy==1.13.1
+PyYAML==6.0.2

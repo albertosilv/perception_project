@@ -1,0 +1,34 @@
+# =========================================================
+# Configuração central do projeto de percepção
+# Edite aqui em vez de mexer no código-fonte
+# =========================================================
+
+camera:
+  source: 0                # 0 = webcam padrão, ou caminho de vídeo/RTSP
+  width: 640
+  height: 480
+  flip_horizontal: true    # espelha a imagem (útil pra webcam)
+
+face_detection:
+  # backend: "haar" (rápido, mais leve) ou "dlib_hog" (mais preciso, mais lento)
+  backend: "dlib_hog"
+  haar_cascade_path: "models/haarcascade_frontalface_default.xml"
+  upsample: 1               # usado apenas pelo dlib_hog (aumenta detecção de rostos pequenos)
+  min_confidence: 0.0       # reservado para backends futuros (ex: DNN)
+
+landmarks:
+  enabled: true
+  predictor_path: "models/shape_predictor_68_face_landmarks.dat"
+  draw_points: true
+  draw_indices: false      # desenha o número de cada ponto (útil pra debug)
+
+display:
+  window_name: "Perception Pipeline"
+  show_fps: true
+  show_bbox: true
+  font_scale: 0.6
+
+logging:
+  level: "INFO"             # DEBUG, INFO, WARNING, ERROR
+  log_to_file: false
+  log_file: "data/output/perception.log"

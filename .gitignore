@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# Modelos baixados (pesados, não versionar)
+models/*.dat
+models/*.bz2
+
+# Saídas geradas
+data/output/*
+!data/output/.gitkeep
+
+.vscode/
+.idea/
+*.log
