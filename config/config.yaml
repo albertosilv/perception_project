@@ -144,6 +144,107 @@ perclos:
 
 
 # =========================================================
+# CLASSIFICADOR (REGRESSÃO LOGÍSTICA)
+# =========================================================
+#
+# Classifica o estado do usuário ("fadiga" / "sem_fadiga") em tempo
+# real, a partir das features geradas pelos detectores acima.
+#
+# enabled: false até você treinar um modelo com
+# `python -m src.ml.train_model` (precisa de vídeos rotulados em
+# training.dataset_dir). Depois disso, mude para true.
+
+classifier:
+  enabled: false
+
+  model_path: "models/classifier/logistic_regression.joblib"
+  scaler_path: "models/classifier/scaler.joblib"
+
+  # Se um valor não estiver disponível em face.extra num dado frame
+  # (ex: detector correspondente desligado), usa este valor no lugar.
+  decision_threshold: 0.5
+
+  # Features usadas para TREINAR o modelo (a ordem importa).
+  # Na hora de classificar, o próprio modelo salvo (metadados .json)
+  # é quem manda — isto aqui só é usado no treino.
+  features:
+    - "ear"
+    - "mar"
+    - "perclos"
+    - "blink_rate_per_min"
+    - "yawn_rate_per_min"
+    - "head_pose.pitch_adjusted"
+    - "head_pose.yaw_adjusted"
+    - "head_pose.roll_adjusted"
+
+
+# =========================================================
+# TREINO DO CLASSIFICADOR
+# =========================================================
+#
+# Organize os vídeos rotulados assim (uma subpasta por classe — o
+# NOME DA PASTA vira o rótulo usado pelo modelo, exatamente como está):
+#
+#   data/dataset/
+#   ├── fadiga/
+#   │   └── *.mp4
+#   └── sem_fadiga/
+#       └── *.mp4
+
+training:
+  dataset_dir: "data/dataset"
+  output_dir: "data/output/training"
+
+  # Processa 1 a cada N frames de cada vídeo (evita amostras
+  # quase idênticas em sequência e acelera o treino).
+  frame_sample_rate: 5
+
+  test_size: 0.2
+  random_state: 42
+  max_iter: 1000
+
+
+# =========================================================
+# PICOS DE FADIGA (regressão logística + regressão linear)
+# =========================================================
+#
+# A regressão LOGÍSTICA (classifier acima) gera, a cada frame, a
+# probabilidade contínua de "fadiga". Este detector ajusta uma
+# regressão LINEAR sobre essa série dentro de `window_seconds` e
+# marca um PICO quando o valor atual sobe muito acima da tendência
+# da janela (não apenas "está alto", mas "subiu de repente").
+#
+# Depende do 'classifier' acima estar habilitado.
+
+fatigue_spike:
+  enabled: false
+
+  # Nome da classe (pasta do dataset) cuja probabilidade será
+  # monitorada — deve bater com uma das pastas em training.dataset_dir.
+  target_label: "fadiga"
+
+  # A janela de tempo "x" que você quer observar, em segundos.
+  window_seconds: 60.0
+
+  # Resíduo mínimo (valor atual - tendência prevista) para contar
+  # como pico. Quanto menor, mais sensível a pequenas subidas.
+  spike_threshold: 0.25
+
+  # Só conta como pico se a probabilidade absoluta também for alta —
+  # evita marcar "pico" numa subida de 0.01 para 0.05, por exemplo.
+  min_confidence: 0.6
+
+  # Tempo mínimo entre dois picos contados para o mesmo rosto, evita
+  # contar o mesmo pico várias vezes enquanto ele ainda está alto.
+  cooldown_seconds: 5.0
+
+  # Salva todos os picos detectados na sessão em CSV, na pasta
+  # definida no config, ao final da execução (ou no finally do erro).
+  log_events: true
+  events_log_file: "data/output/fatigue_spikes.csv"
+
+
+# =========================================================
 # DISPLAY
 # =========================================================
 

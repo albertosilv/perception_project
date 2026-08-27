@@ -527,28 +527,10 @@ class HeadPoseDetector(BaseDetector):
                     continue
 
             # =====================================================
-            # DESVIO DA BASELINE
-            # =====================================================
-
-            baseline = self._baseline[i]
-
-            pitch_adjusted = (
-                pitch -
-                baseline["pitch"]
-            )
-
-            yaw_adjusted = (
-                yaw -
-                baseline["yaw"]
-            )
-
-            roll_adjusted = (
-                roll -
-                baseline["roll"]
-            )
-
-            # =====================================================
             # RECALIBRAÇÃO
+            #
+            # Precisa rodar ANTES do cálculo de desvio abaixo, pois
+            # pode atualizar a baseline no meio deste frame.
             # =====================================================
 
             self._check_auto_recalibration(
@@ -557,6 +539,10 @@ class HeadPoseDetector(BaseDetector):
                 yaw,
                 roll,
             )
+
+            # =====================================================
+            # DESVIO DA BASELINE (já considerando recalibração acima)
+            # =====================================================
 
             baseline = self._baseline[i]
 

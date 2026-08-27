@@ -1,0 +1,261 @@
+@startuml
+title Pipeline de Percepção Computacional para Estimativa de Fadiga
+
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam activity {
+    BackgroundColor White
+    BorderColor Black
+}
+
+start
+
+:CÂMERA;
+:Detecção Facial;
+:Landmarks Faciais\n(Dlib 68 pontos);
+
+fork
+
+    :EYE STATE;
+
+    note right
+      EAR (Eye Aspect Ratio)
+      Mede a abertura do olho.
+
+      EAR maior → olho aberto
+      EAR menor → olho fechado
+
+      Normalização:
+      ClosedRatio =
+      (0.25 - EAR) / (0.25 - 0.10)
+
+      ClosedRatio:
+      0.0 → aberto
+      1.0 → muito fechado
+
+      Threshold:
+      ClosedRatio > 0.60
+      → olho fechado
+
+      PISCADA:
+      0.20 s ≤ duração < 3.0 s
+
+      FECHAMENTO PROLONGADO:
+      duração ≥ 3.0 s
+
+      Tudo medido em segundos.
+    end note
+
+fork again
+
+    :YAWN;
+
+    note right
+      MAR (Mouth Aspect Ratio)
+      Mede a abertura da boca.
+
+      MAR maior → boca mais aberta
+
+      Threshold:
+      MAR > 0.60
+      → boca aberta
+
+      BOCEJO:
+      abertura mantida por ≥ 3.0 s
+
+      O tempo é medido com
+      time.time(), não por frames.
+    end note
+
+fork again
+
+    :HEAD POSE;
+
+    note right
+      Pose da cabeça:
+      • Pitch → inclinação frontal
+      • Yaw → rotação lateral
+      • Roll → inclinação lateral
+
+      Valores são desvios em
+      relação à baseline calibrada.
+
+      Roll:
+      |Roll| > 20°
+      por ≥ 0.8 s
+      → Head Tilt
+
+      Pitch:
+      |Pitch| > 12°
+      por ≥ 0.8 s
+      → Nodding
+
+      Yaw:
+      |Yaw| > 20°
+      por ≥ 0.8 s
+      → Distraction
+
+      Calibração inicial:
+      1.5 s
+
+      Recalibração automática:
+      5.0 s de estabilidade
+    end note
+
+end fork
+
+:EYE STATE + YAWN;
+
+:PERCLOS;
+
+note right
+  PERCLOS
+  Proporção do tempo observado
+  em que os olhos permanecem fechados.
+
+       tempo olhos fechados
+  PERCLOS = -------------------
+       tempo observado
+
+  Janela temporal:
+  60 s
+
+  Olho fechado:
+  ClosedRatio ≥ 0.60
+
+  Alerta:
+  PERCLOS ≥ 0.08
+  → ≥ 8% do tempo
+    com olhos fechados
+
+  Também calcula:
+
+  Blink Rate:
+  piscadas / minuto
+
+  Alerta:
+  ≥ 30 piscadas/min
+
+  Yawn Rate:
+  bocejos / minuto
+
+  Alerta:
+  ≥ 3 bocejos/min
+
+  Todas as métricas são
+  baseadas em TEMPO.
+end note
+
+:PERCLOS + BLINK RATE + YAWN RATE\n+ HEAD POSE;
+
+:PRÉ-PROCESSAMENTO\n(FeatureExtractor);
+
+note right
+  Monta o vetor de features,
+  sempre na mesma ordem do treino:
+
+  • EAR
+  • MAR
+  • PERCLOS
+  • Blink rate / min
+  • Yawn rate / min
+  • Head pose (pitch/yaw/roll
+    ajustados à baseline)
+
+  Valores ausentes (detector
+  desligado) recebem default 0.0.
+end note
+
+:CLASSIFICADOR\n(Regressão Logística);
+
+note right
+  Treinado offline em
+  src/ml/train_model.py, a partir
+  de vídeos rotulados por pasta:
+
+  data/dataset/fadiga/*.mp4
+  data/dataset/sem_fadiga/*.mp4
+
+  Pipeline:
+  StandardScaler → LogisticRegression
+
+  Como decide (Regressão Logística):
+  1. z = w1·ear + w2·mar + ... + b
+  2. sigmoide: p = 1 / (1 + e^-z)
+  3. p = probabilidade de "fadiga"
+  4. classe prevista = maior p
+
+  class_weight="balanced" compensa
+  datasets com classes desbalanceadas.
+
+  Saída por frame:
+  • drowsiness_label
+    ("fadiga" / "sem_fadiga")
+  • drowsiness_confidence
+  • drowsiness_probabilities
+    (probabilidade de cada classe)
+
+  Desligado até existir um
+  modelo treinado e salvo em
+  models/classifier/.
+end note
+
+:DETECTOR DE PICOS\n(Regressão Linear);
+
+note right
+  Acompanha a probabilidade de
+  "fadiga" ao longo do tempo.
+
+  Como decide (Regressão Linear):
+  1. pontos (t, p) da janela de
+     window_seconds (padrão 60 s)
+  2. ajusta reta por mínimos
+     quadrados (np.polyfit grau 1):
+     p = slope·t + intercept
+  3. previsão = valor esperado
+     da reta no tempo atual
+  4. residual = p_atual - previsão
+
+  PICO = residual muito alto
+  (fuga acima da tendência),
+  não apenas um valor alto isolado.
+
+  Condições para contar um pico:
+  • residual ≥ 0.25
+  • valor absoluto ≥ 0.60
+  • cooldown de 5.0 s entre picos
+
+  Depende do classificador
+  estar habilitado.
+end note
+
+fork
+
+    :VISUALIZAÇÃO;
+
+    note right
+      Desenha sobre o frame:
+      bbox, landmarks, EAR/MAR,
+      classe prevista, tendência
+      de fadiga e alerta de pico.
+    end note
+
+fork again
+
+    :LOGS;
+
+    note right
+      perception.log
+      (execução geral, salvo ao
+      final via logging.shutdown())
+
+      fatigue_spikes.csv
+      (picos da sessão, salvos por
+      pipeline.finalize())
+    end note
+
+end fork
+
+stop
+
+@enduml

@@ -8,10 +8,21 @@
 #   conda create -n perception python=3.11 -y
 #   conda activate perception
 #   conda install -c conda-forge dlib numpy opencv -y
-#   pip install -r requirements.txt   (instala só o restante abaixo)
+#
+# IMPORTANTE: se usou o conda acima, NÃO rode
+# "pip install -r requirements.txt" direto (ele tentaria reinstalar
+# dlib/numpy/opencv via pip e falharia por falta de CMake).
+# Em vez disso, instale só o restante:
+#
+#   pip install imutils PyYAML scipy
+#
+# Se a janela do OpenCV não abrir (erro de imshow/GTK), o build do
+# conda pode ser "headless" — troque só o cv2 por uma versão com GUI:
+#
+#   pip install opencv-python
 #
 # No Linux/Mac normalmente `pip install -r requirements.txt` direto
-# já funciona sem problema.
+# já funciona sem problema (não precisa de conda).
 # -------------------------------------------------------------------
 
 opencv-python==4.10.0.84
@@ -20,3 +31,7 @@ numpy>=1.26,<3
 imutils==0.5.4
 scipy==1.13.1
 PyYAML==6.0.2
+
+# --- treino/classificação (regressão logística) ---
+scikit-learn==1.5.2
+joblib==1.4.2
